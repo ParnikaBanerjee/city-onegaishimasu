@@ -1,0 +1,46 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout>
+  <main class="min-h-screen p-6">
+    
+    <section class="grid grid-cols-1 md:grid-cols-4 auto-rows-[180px] gap-4">
+
+      <!-- Large primary card -->
+      <div class="md:col-span-2 md:row-span-2 rounded-2xl bg-neutral-900 p-6">
+        <h2 class="text-xl font-semibold">Primary</h2>
+        <p class="text-neutral-400 mt-2">
+          Main content area
+        </p>
+      </div>
+
+      <!-- Small card -->
+      <div class="rounded-2xl bg-red-50 p-6">
+        <h2 class="font-semibold">Stats</h2>
+      </div>
+
+      <!-- Small card -->
+      <div class="rounded-2xl bg-neutral-900 p-6">
+        <h2 class="font-semibold">Activity</h2>
+      </div>
+
+      <!-- Wide card -->
+      <div class="md:col-span-2 rounded-2xl bg-neutral-900 p-6">
+        <h2 class="font-semibold">Overview</h2>
+      </div>
+
+      <!-- Tall card -->
+      <div class="md:row-span-2 rounded-2xl bg-neutral-900 p-6">
+        <h2 class="font-semibold">API Widget</h2>
+      </div>
+
+      <!-- Normal card -->
+      <div class="rounded-2xl bg-neutral-900 p-6">
+        <h2 class="font-semibold">Info</h2>
+      </div>
+
+    </section>
+
+  </main>
+</BaseLayout>
