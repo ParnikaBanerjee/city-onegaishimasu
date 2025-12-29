@@ -1,9 +1,91 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Reset */
+* {
+  box-sizing:border-box;
+}
+:root{
+  --pink:#f08080;
+  --orange:#f4978e;
+  --peach:#fbc4ab;
+  --yellow:#ffdab9;
 
-/* Add any global styles below */
+}
 html, body {
-  height: 100%;
   margin: 0;
+  height: 100%;
+  font-family: system-ui, sans-serif;
+  background: var(--pink);
+  color: var(--orange);
+}
+
+/* Bento Grid */
+.bento {
+  min-height: 100vh;
+  background: var(--pink);
+  padding: 24px;
+  display: grid;
+  grid-template-columns:repeat(5 , 1fr);
+  gap: 16px;
+}
+
+/* Card base */
+.card {
+  background:var(--yellow);
+  border-radius: 16px;
+  padding: 20px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+/* Bento variations */
+.weather {
+  grid-column: span 3;
+  grid-row: span 2;
+}
+.search{
+  grid-column: span 2;
+  grid-row: span 1;
+}
+.name{
+  grid-column: span 2;
+  grid-row: span 2;
+}
+.pictures{
+  grid-column: span 3;
+  grid-row: span 1;
+}
+.quotes{
+  grid-column: span 3;
+  grid-row: span 1;
+}
+.music{
+  grid-column: span 3;
+  grid-row: span 1;
+}
+
+
+.card-wide {
+  grid-column: span 2;
+}
+
+.card-tall {
+  grid-row: span 2;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .bento {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 500px) {
+  .bento {
+    grid-template-columns: 1fr;
+    grid-auto-rows: auto;
+  }
 }
