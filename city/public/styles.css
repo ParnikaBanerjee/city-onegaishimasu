@@ -1,6 +1,6 @@
 body{
 font-family:sans-serif;
-background:#111;
+background:#bab5b5;
 color:white;
 transition:background 1s;
 }
@@ -14,7 +14,7 @@ padding:20px;
 }
 
 .box{
-background:rgba(255,255,255,0.1);
+background:rgba(86, 80, 80, 0.1);
 backdrop-filter: blur(10px);
 border-radius:15px;
 padding:15px;
