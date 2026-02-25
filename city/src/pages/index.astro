@@ -1,5 +1,4 @@
 ---
-// No server-side logic needed here yet
 ---
 
 <html>
@@ -18,7 +17,7 @@
 <div class="bento">
   <div class="box" id="weather"></div>
 
-  <div class="box">
+  <div class="box" id="photos">
     <img id="scenicImg" />
   </div>
 
@@ -32,7 +31,7 @@
 </div>
 
 <script>
-const API_BASE = "http://localhost:8000"; // change to deployed URL later
+const API_BASE = "http://localhost:8000";
 
 const cityInput   = document.getElementById("cityInput");
 const suggestions = document.getElementById("suggestions");
@@ -40,15 +39,20 @@ const suggestions = document.getElementById("suggestions");
 let debounceTimer = null;
 
 // ── Autocomplete ──────────────────────────────────────────
+// Talks to: FastAPI /autocomplete → Python calls GeoDB via RapidAPI
 cityInput.addEventListener("input", () => {
   clearTimeout(debounceTimer);
   const q = cityInput.value.trim();
   if (q.length < 2) { suggestions.innerHTML = ""; return; }
 
   debounceTimer = setTimeout(async () => {
-    const res  = await fetch(`${API_BASE}/autocomplete?q=${encodeURIComponent(q)}`);
-    const data = await res.json();
-    renderSuggestions(data.suggestions || []);
+    try {
+      const res  = await fetch(`${API_BASE}/autocomplete?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      renderSuggestions(data.suggestions || []);
+    } catch {
+      suggestions.innerHTML = "";
+    }
   }, 300);
 });
 
@@ -64,7 +68,7 @@ function renderSuggestions(cities) {
 
   suggestions.querySelectorAll(".suggestion-item").forEach(item => {
     item.addEventListener("click", () => {
-      cityInput.value = item.dataset.name;
+      cityInput.value = `${item.dataset.name}, ${item.dataset.country}`;
       suggestions.innerHTML = "";
       loadCity(item.dataset.name, item.dataset.country, item.dataset.code);
     });
@@ -72,73 +76,98 @@ function renderSuggestions(cities) {
 }
 
 // ── Load all data ─────────────────────────────────────────
+// Talks to: FastAPI /place → Python calls all 5 APIs in parallel
 async function loadCity(name, country, countryCode) {
-  // Clear previous content
-  document.getElementById("weather").innerHTML  = "Loading...";
-  document.getElementById("food").innerHTML     = "Loading...";
-  document.getElementById("music").innerHTML    = "Loading...";
-  document.getElementById("country").innerHTML  = "Loading...";
-  document.getElementById("dress").innerHTML    = "Loading...";
-  document.getElementById("scenicImg").src      = "";
+  // Show loading state in every box
+  ["weather", "food", "music", "country", "dress"].forEach(id => {
+    document.getElementById(id).innerHTML = `<p class="loading">Loading...</p>`;
+  });
+  document.getElementById("scenicImg").src = "";
 
-  // Single call to your FastAPI backend — it handles everything
-  const res  = await fetch(`${API_BASE}/place?name=${encodeURIComponent(name)}&country=${encodeURIComponent(country)}&countryCode=${countryCode}`);
-  const data = await res.json();
+  try {
+    const res  = await fetch(
+      `${API_BASE}/place?name=${encodeURIComponent(name)}&country=${encodeURIComponent(country)}&countryCode=${countryCode}`
+    );
+    const data = await res.json();
 
-  renderWeather(data.weather);
-  renderPhotos(data.photos);
-  renderFood(data.food);
-  renderMusic(data.music);
-  renderDress(data.dress);
-  renderCountry(data.country);
+    // Each renderer gets its own slice of the Python response
+    renderWeather(data.weather);   // from OpenWeatherMap
+    renderPhotos(data.photos);     // from Unsplash
+    renderFood(data.food);         // from SerpAPI
+    renderMusic(data.music);       // from Deezer via RapidAPI
+    renderDress(data.dress);       // from Unsplash
+    renderCountry(data.country);   // plain string from the /place params
+
+  } catch (err) {
+    console.error("Failed to load city data:", err);
+  }
 }
 
 // ── Renderers ─────────────────────────────────────────────
+
+// data.weather shape: { temp, feels_like, humidity, description, icon, wind_speed }
 function renderWeather(w) {
-  if (!w) return;
+  if (!w) { document.getElementById("weather").innerHTML = "<p>Unavailable</p>"; return; }
   document.getElementById("weather").innerHTML = `
+    <img src="https://openweathermap.org/img/wn/${w.icon}@2x.png" alt="${w.description}" />
     <h2>${w.temp}°C</h2>
     <p>${w.description}</p>
+    <p>Feels like ${w.feels_like}°C</p>
     <p>Humidity: ${w.humidity}%</p>
     <p>Wind: ${w.wind_speed} m/s</p>
   `;
 }
 
+// data.photos shape: [{ url, thumb, color, alt }, ...]
 function renderPhotos(photos) {
   if (!photos?.length) return;
-  document.getElementById("scenicImg").src = photos[0].url;
-  document.getElementById("scenicImg").alt = photos[0].alt;
+  // Show first photo, color is the dominant hex for ambient lighting
+  const img = document.getElementById("scenicImg");
+  img.src = photos[0].url;
+  img.alt = photos[0].alt;
+
+  // Optional: use photos[0].color for ambient background tint
+  document.body.style.setProperty("--ambient", photos[0].color);
 }
 
+// data.food shape: [{ title, snippet }, ...]
 function renderFood(food) {
-  if (!food?.length) return;
+  if (!food?.length) { document.getElementById("food").innerHTML = "<p>Unavailable</p>"; return; }
   document.getElementById("food").innerHTML = food.map(f => `
-    <div>
+    <div class="food-item">
       <strong>${f.title}</strong>
       <p>${f.snippet}</p>
     </div>
   `).join("");
 }
 
+// data.music shape: [{ title, artist, preview, cover }, ...]
+// preview is a direct 30s MP3 URL from Deezer — works in <audio> natively
 function renderMusic(tracks) {
-  if (!tracks?.length) return;
+  if (!tracks?.length) { document.getElementById("music").innerHTML = "<p>Unavailable</p>"; return; }
   document.getElementById("music").innerHTML = tracks.map(t => `
-    <div>
-      <img src="${t.cover}" width="40" />
-      <span>${t.title} — ${t.artist}</span>
+    <div class="music-item">
+      <img src="${t.cover}" width="40" height="40" alt="${t.title}" />
+      <div>
+        <p>${t.title}</p>
+        <small>${t.artist}</small>
+      </div>
       <audio controls src="${t.preview}"></audio>
     </div>
   `).join("");
 }
 
+// data.dress shape: [{ url, thumb, alt }, ...]
 function renderDress(dress) {
-  if (!dress?.length) return;
+  if (!dress?.length) { document.getElementById("dress").innerHTML = "<p>Unavailable</p>"; return; }
   document.getElementById("dress").innerHTML = dress.map(d => `
     <img src="${d.thumb}" alt="${d.alt}" />
   `).join("");
 }
 
+// data.country is just a plain string like "Japan"
 function renderCountry(country) {
+  if (!country) return;
   document.getElementById("country").innerHTML = `<p>${country}</p>`;
 }
 </script>
