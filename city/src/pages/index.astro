@@ -1,38 +1,147 @@
 ---
+// No server-side logic needed here yet
 ---
 
 <html>
 <head>
-<title>World Explorer</title>
-<link rel="stylesheet" href="/styles.css">
+  <title>World Explorer</title>
+  <link rel="stylesheet" href="/styles.css">
 </head>
 
 <body>
 
 <div class="searchBox">
-<input id="cityInput" placeholder="Search city..." />
-<div id="suggestions"></div>
+  <input id="cityInput" placeholder="Search city..." autocomplete="off" />
+  <div id="suggestions"></div>
 </div>
 
 <div class="bento">
+  <div class="box" id="weather"></div>
 
-<div class="box" id="weather"></div>
+  <div class="box">
+    <img id="scenicImg" />
+  </div>
 
-<div class="box">
-<img id="scenicImg"/>
+  <div class="box" id="food"></div>
+
+  <div class="box" id="music"></div>
+
+  <div class="box" id="dress"></div>
+
+  <div class="box" id="country"></div>
 </div>
 
-<div class="box" id="food"></div>
+<script>
+const API_BASE = "http://localhost:8000"; // change to deployed URL later
 
-<div class="box" id="music"></div>
+const cityInput   = document.getElementById("cityInput");
+const suggestions = document.getElementById("suggestions");
 
-<div class="box" id="dress"></div>
+let debounceTimer = null;
 
-<div class="box" id="country"></div>
+// ── Autocomplete ──────────────────────────────────────────
+cityInput.addEventListener("input", () => {
+  clearTimeout(debounceTimer);
+  const q = cityInput.value.trim();
+  if (q.length < 2) { suggestions.innerHTML = ""; return; }
 
-</div>
+  debounceTimer = setTimeout(async () => {
+    const res  = await fetch(`${API_BASE}/autocomplete?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    renderSuggestions(data.suggestions || []);
+  }, 300);
+});
 
-<script src="/app.js" is:inline></script>
+function renderSuggestions(cities) {
+  suggestions.innerHTML = cities.map(c => `
+    <div class="suggestion-item"
+         data-name="${c.name}"
+         data-country="${c.country}"
+         data-code="${c.countryCode}">
+      ${c.name}, ${c.country}
+    </div>
+  `).join("");
+
+  suggestions.querySelectorAll(".suggestion-item").forEach(item => {
+    item.addEventListener("click", () => {
+      cityInput.value = item.dataset.name;
+      suggestions.innerHTML = "";
+      loadCity(item.dataset.name, item.dataset.country, item.dataset.code);
+    });
+  });
+}
+
+// ── Load all data ─────────────────────────────────────────
+async function loadCity(name, country, countryCode) {
+  // Clear previous content
+  document.getElementById("weather").innerHTML  = "Loading...";
+  document.getElementById("food").innerHTML     = "Loading...";
+  document.getElementById("music").innerHTML    = "Loading...";
+  document.getElementById("country").innerHTML  = "Loading...";
+  document.getElementById("dress").innerHTML    = "Loading...";
+  document.getElementById("scenicImg").src      = "";
+
+  // Single call to your FastAPI backend — it handles everything
+  const res  = await fetch(`${API_BASE}/place?name=${encodeURIComponent(name)}&country=${encodeURIComponent(country)}&countryCode=${countryCode}`);
+  const data = await res.json();
+
+  renderWeather(data.weather);
+  renderPhotos(data.photos);
+  renderFood(data.food);
+  renderMusic(data.music);
+  renderDress(data.dress);
+  renderCountry(data.country);
+}
+
+// ── Renderers ─────────────────────────────────────────────
+function renderWeather(w) {
+  if (!w) return;
+  document.getElementById("weather").innerHTML = `
+    <h2>${w.temp}°C</h2>
+    <p>${w.description}</p>
+    <p>Humidity: ${w.humidity}%</p>
+    <p>Wind: ${w.wind_speed} m/s</p>
+  `;
+}
+
+function renderPhotos(photos) {
+  if (!photos?.length) return;
+  document.getElementById("scenicImg").src = photos[0].url;
+  document.getElementById("scenicImg").alt = photos[0].alt;
+}
+
+function renderFood(food) {
+  if (!food?.length) return;
+  document.getElementById("food").innerHTML = food.map(f => `
+    <div>
+      <strong>${f.title}</strong>
+      <p>${f.snippet}</p>
+    </div>
+  `).join("");
+}
+
+function renderMusic(tracks) {
+  if (!tracks?.length) return;
+  document.getElementById("music").innerHTML = tracks.map(t => `
+    <div>
+      <img src="${t.cover}" width="40" />
+      <span>${t.title} — ${t.artist}</span>
+      <audio controls src="${t.preview}"></audio>
+    </div>
+  `).join("");
+}
+
+function renderDress(dress) {
+  if (!dress?.length) return;
+  document.getElementById("dress").innerHTML = dress.map(d => `
+    <img src="${d.thumb}" alt="${d.alt}" />
+  `).join("");
+}
+
+function renderCountry(country) {
+  document.getElementById("country").innerHTML = `<p>${country}</p>`;
+}
+</script>
 
 </body>
 </html>
