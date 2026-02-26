@@ -8,38 +8,57 @@
 </head>
 
 <body>
-
-<div class="searchBox">
-  <input id="cityInput" placeholder="Search city..." autocomplete="off" />
-  <div id="suggestions"></div>
-</div>
-
 <div class="bento">
-  <div class="box" id="weather"></div>
 
-  <div class="box" id="photos">
+  <div class="box" id="logo" style="grid-area:logo">
+    <h1>CITY ONEGAISHIMASU</h1>
+  </div>
+
+  <div class="box" id="place" style="grid-area:place">
+    <p id="countryLabel"></p>
+    <h2 id="cityLabel"></h2>
+  </div>
+
+  <div class="box" id="searchBox" style="grid-area:search">
+    <input id="cityInput" placeholder="Search city..." autocomplete="off" />
+    <div id="suggestions"></div>
+  </div>
+
+  <div class="box" id="weather" style="grid-area:weather"></div>
+
+  <div class="box" id="scene" style="grid-area:scene">
     <img id="scenicImg" />
   </div>
 
-  <div class="box" id="food"></div>
+  <div class="box" id="arch" style="grid-area:arch">
+    <div id="archGrid"></div>
+  </div>
 
-  <div class="box" id="music"></div>
+  <div class="box" id="ppl" style="grid-area:ppl">
+    <div id="dressGrid"></div>
+  </div>
 
-  <div class="box" id="dress"></div>
+  <div class="box" id="food" style="grid-area:food">
+    <div id="foodGrid"></div>
+  </div>
 
-  <div class="box" id="country"></div>
+  <div class="box" id="song1" style="grid-area:song1">
+    <div id="musicTrack1"></div>
+  </div>
+
+  <div class="box" id="song2" style="grid-area:song2">
+    <div id="musicTrack2"></div>
+  </div>
+
 </div>
 
 <script>
 const API_BASE = "http://localhost:8000";
-
 const cityInput   = document.getElementById("cityInput");
 const suggestions = document.getElementById("suggestions");
-
 let debounceTimer = null;
 
 // ── Autocomplete ──────────────────────────────────────────
-// Talks to: FastAPI /autocomplete → Python calls GeoDB via RapidAPI
 cityInput.addEventListener("input", () => {
   clearTimeout(debounceTimer);
   const q = cityInput.value.trim();
@@ -76,12 +95,14 @@ function renderSuggestions(cities) {
 }
 
 // ── Load all data ─────────────────────────────────────────
-// Talks to: FastAPI /place → Python calls all 5 APIs in parallel
 async function loadCity(name, country, countryCode) {
-  // Show loading state in every box
-  ["weather", "food", "music", "country", "dress"].forEach(id => {
-    document.getElementById(id).innerHTML = `<p class="loading">Loading...</p>`;
-  });
+  // Loading states
+  document.getElementById("weather").innerHTML    = `<p class="loading">Loading...</p>`;
+  document.getElementById("archGrid").innerHTML   = `<p class="loading">Loading...</p>`;
+  document.getElementById("dressGrid").innerHTML  = `<p class="loading">Loading...</p>`;
+  document.getElementById("foodGrid").innerHTML   = `<p class="loading">Loading...</p>`;
+  document.getElementById("musicTrack1").innerHTML = `<p class="loading">Loading...</p>`;
+  document.getElementById("musicTrack2").innerHTML = `<p class="loading">Loading...</p>`;
   document.getElementById("scenicImg").src = "";
 
   try {
@@ -90,13 +111,13 @@ async function loadCity(name, country, countryCode) {
     );
     const data = await res.json();
 
-    // Each renderer gets its own slice of the Python response
-    renderWeather(data.weather);   // from OpenWeatherMap
-    renderPhotos(data.photos);     // from Unsplash
-    renderFood(data.food);         // from SerpAPI
-    renderMusic(data.music);       // from Deezer via RapidAPI
-    renderDress(data.dress);       // from Unsplash
-    renderCountry(data.country);   // plain string from the /place params
+    renderPlace(data.place, data.country);
+    renderWeather(data.weather);
+    renderScenery(data.scenery);
+    renderArchitecture(data.architecture);
+    renderFoodPhotos(data.food_photos);
+    renderDress(data.dress);
+    renderMusic(data.music);
 
   } catch (err) {
     console.error("Failed to load city data:", err);
@@ -105,7 +126,11 @@ async function loadCity(name, country, countryCode) {
 
 // ── Renderers ─────────────────────────────────────────────
 
-// data.weather shape: { temp, feels_like, humidity, description, icon, wind_speed }
+function renderPlace(city, country) {
+  document.getElementById("cityLabel").textContent   = city || "";
+  document.getElementById("countryLabel").textContent = country || "";
+}
+
 function renderWeather(w) {
   if (!w) { document.getElementById("weather").innerHTML = "<p>Unavailable</p>"; return; }
   document.getElementById("weather").innerHTML = `
@@ -118,58 +143,87 @@ function renderWeather(w) {
   `;
 }
 
-// data.photos shape: [{ url, thumb, color, alt }, ...]
-function renderPhotos(photos) {
-  if (!photos?.length) return;
-  // Show first photo, color is the dominant hex for ambient lighting
-  const img = document.getElementById("scenicImg");
-  img.src = photos[0].url;
-  img.alt = photos[0].alt;
-
-  // Optional: use photos[0].color for ambient background tint
-  document.body.style.setProperty("--ambient", photos[0].color);
+// Scenery → big scene box, also sets ambient color
+function renderScenery(photos) {
+  makeSlideshow("scene", photos, 4000);
+  // set ambient color from first photo after slideshow is built
+  if (photos?.length) {
+    document.body.style.setProperty("--ambient", photos[0].color);
+  }
 }
 
-// data.food shape: [{ title, snippet }, ...]
-function renderFood(food) {
-  if (!food?.length) { document.getElementById("food").innerHTML = "<p>Unavailable</p>"; return; }
-  document.getElementById("food").innerHTML = food.map(f => `
-    <div class="food-item">
-      <strong>${f.title}</strong>
-      <p>${f.snippet}</p>
-    </div>
-  `).join("");
+function renderArchitecture(photos) {
+  makeSlideshow("arch", photos, 3000);
 }
 
-// data.music shape: [{ title, artist, preview, cover }, ...]
-// preview is a direct 30s MP3 URL from Deezer — works in <audio> natively
+function renderFoodPhotos(photos) {
+  makeSlideshow("food", photos, 3500);
+}
+
+function renderDress(photos) {
+  makeSlideshow("ppl", photos, 5000);
+}
+
+// Music → split across song1 and song2 boxes
 function renderMusic(tracks) {
-  if (!tracks?.length) { document.getElementById("music").innerHTML = "<p>Unavailable</p>"; return; }
-  document.getElementById("music").innerHTML = tracks.map(t => `
+  const t1 = tracks?.[0];
+  const t2 = tracks?.[1];
+
+  document.getElementById("musicTrack1").innerHTML = t1 ? `
     <div class="music-item">
-      <img src="${t.cover}" width="40" height="40" alt="${t.title}" />
+      <img src="${t1.cover}" width="40" height="40" alt="${t1.title}" />
       <div>
-        <p>${t.title}</p>
-        <small>${t.artist}</small>
+        <p>${t1.title}</p>
+        <small>${t1.artist}</small>
       </div>
-      <audio controls src="${t.preview}"></audio>
+      <audio controls src="${t1.preview}"></audio>
     </div>
-  `).join("");
+  ` : "<p>Unavailable</p>";
+
+  document.getElementById("musicTrack2").innerHTML = t2 ? `
+    <div class="music-item">
+      <img src="${t2.cover}" width="40" height="40" alt="${t2.title}" />
+      <div>
+        <p>${t2.title}</p>
+        <small>${t2.artist}</small>
+      </div>
+      <audio controls src="${t2.preview}"></audio>
+    </div>
+  ` : "<p>Unavailable</p>";
 }
 
-// data.dress shape: [{ url, thumb, alt }, ...]
-function renderDress(dress) {
-  if (!dress?.length) { document.getElementById("dress").innerHTML = "<p>Unavailable</p>"; return; }
-  document.getElementById("dress").innerHTML = dress.map(d => `
-    <img src="${d.thumb}" alt="${d.alt}" />
-  `).join("");
+const slideshowTimers = {};
+
+function makeSlideshow(containerId, photos, interval = 3000) {
+  const container = document.getElementById(containerId);
+  if (!photos?.length) { container.innerHTML = "<p>Unavailable</p>"; return; }
+
+  // clear any existing timer for this container if reloading a new city
+  if (slideshowTimers[containerId]) {
+    clearInterval(slideshowTimers[containerId]);
+  }
+
+  container.innerHTML = `
+    <div class="slideshow">
+      ${photos.map((p, i) => `
+        <img src="${p.url}" alt="${p.alt}" class="slide ${i === 0 ? 'active' : ''}" />
+      `).join("")}
+      <button class="slide-btn prev" onclick="slideMove('${containerId}', -1)">&#8592;</button>
+      <button class="slide-btn next" onclick="slideMove('${containerId}', 1)">&#8594;</button>
+      <div class="slide-dots">
+        ${photos.map((_, i) => `
+          <span class="dot ${i === 0 ? 'active' : ''}" onclick="slideTo('${containerId}', ${i})"></span>
+        `).join("")}
+      </div>
+    </div>
+  `;
+
+  // auto advance every `interval` ms
+  slideshowTimers[containerId] = setInterval(() => {
+    slideMove(containerId, 1);
+  }, interval);
 }
 
-// data.country is just a plain string like "Japan"
-function renderCountry(country) {
-  if (!country) return;
-  document.getElementById("country").innerHTML = `<p>${country}</p>`;
-}
 </script>
 
 </body>

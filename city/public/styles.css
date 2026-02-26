@@ -1,16 +1,35 @@
+:root{
+    --lavender:#7758A3;
+    --ruddyblue:#66A5Ed;
+    --honeygold:#F6C45C;
+    --roselavender:#FFAFEB;
+    --cerisedeep:#DB3EBC;
+}
 body{
 font-family:sans-serif;
-background:#bab5b5;
-color:white;
-transition:background 1s;
+background:var(--ruddyblue);
+
 }
 
 .bento{
-display:grid;
-grid-template-columns: repeat(3,1fr);
-grid-auto-rows:200px;
-gap:10px;
-padding:20px;
+  width: 100%;
+  max-width: 100%;
+  height: 1000px;
+  display: grid;
+  gap: 1vw;
+  padding: 1vw;
+  box-sizing: border-box;
+  grid-template-columns: repeat(9, 1fr);
+  grid-template-rows: repeat(8,1fr);
+    grid-template-areas:
+    "logo logo logo place place place search search search"
+    "weather weather weather scene scene scene arch arch arch"
+    "weather weather weather scene scene scene arch arch arch"
+    "weather weather weather scene scene scene arch arch arch"
+    "food food food scene scene scene ppl ppl ppl"
+    "food food food scene scene scene ppl ppl ppl"
+    "food food food scene scene scene ppl ppl ppl"
+    "food food food song1 song1 song1 song2 song2 song2";
 }
 
 .box{
@@ -20,13 +39,98 @@ border-radius:15px;
 padding:15px;
 }
 
-.searchBox{
+.searchBox {
 display:flex;
 justify-content:center;
 margin:20px;
+
 }
 
 input{
 padding:10px;
-width:300px;
+width:200px;
+background-color: var(--lavender);
+color:var(--honeygold);
+display:flex;
+}
+
+/* every slideshow box needs no padding so image fills edge to edge */
+#scene, #arch, #ppl, #food {
+  padding: 0;
+  overflow: hidden;
+}
+
+.slideshow {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 15px;
+  overflow: hidden;
+}
+
+.slide {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;      /* fills the box, crops if needed */
+  opacity: 0;
+  transition: opacity 0.7s ease;
+}
+
+.slide.active {
+  opacity: 1;
+}
+
+.slide-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0,0,0,0.35);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 13px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;                     /* hidden until hover */
+  transition: opacity 0.2s ease;
+}
+
+/* only show arrows when hovering the box */
+#scene:hover .slide-btn,
+#arch:hover  .slide-btn,
+#ppl:hover   .slide-btn,
+#food:hover  .slide-btn  { opacity: 1; }
+
+.slide-btn.prev { left: 8px;  }
+.slide-btn.next { right: 8px; }
+
+.slide-dots {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 5px;
+  z-index: 10;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.4);
+  cursor: pointer;
+  transition: background 0.3s, transform 0.3s;
+}
+
+.dot.active {
+  background: white;
+  transform: scale(1.3);
 }
